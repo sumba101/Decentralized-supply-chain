@@ -1,12 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity >=0.7.0 <0.9.0;
+pragma experimental ABIEncoderV2;
 
 /**
  * @title Storage
  * @dev Store & retrieve value in a variable
  */
 contract Storage {
+    uint constant maxOrders = 100;
+    uint constant maxParties = 10;
+    uint constant maxShipments = 100;
+    uint constant maxComponents = 1000;
+    uint constant maxComponentTypes = 500;
+    uint constant maxOrdersInShipment = 10;
+    uint constant maxSubcomponents = 100;
+    uint constant maxComponentsInOrder = 100;
 
     enum OrderStatus {
         PLACED,
@@ -19,11 +28,11 @@ contract Storage {
     struct Party {
         uint id;
         address owner;
+        string name;
         bool isDeliveryParty;
         uint tier;
         string location;
     }
-
 
     struct OrderComponent {
         uint componentTypeId;
@@ -33,11 +42,18 @@ contract Storage {
 
     struct Order {
         uint id;
-        OrderComponent[] orderComponents;
+        OrderComponent[maxComponentsInOrder] orderComponents;
         int shipmentId;
         uint buyerId;
         uint sellerId;
-        OrderStatus status;
+        OrderStatus status; 
+        /*
+            PLACED,
+            CONFIRMED,
+            SHIPPED,
+            FINISHED,
+            CANCELLED
+        */
     }
 
     struct Shipment {
@@ -51,31 +67,32 @@ contract Storage {
     struct Component {
         uint id;
         uint componentTypeId;
-        uint[] subcomponents;
+        // uint[] subcomponentTypeIds;
+        uint[] subcomponentIds;
         uint manufacturerId;
+        uint ownerId;
     }
 
     struct ComponentType {
         uint id;
         string name;
-        uint[] subcomponents;
+        uint[] subcomponentTypeIds;
+        // uint[] subcomponentQuantities;
     }
 
-    mapping(uint => Party) public parties;
+    Party[maxParties] public parties;
     mapping(address => uint) partyNum;
-    ComponentType[] componentTypes;
-    Order[] orders;
-    Shipment[] shipments;
 
-    struct Counters{
-        uint componentTypeCounter;
-        uint shipmentCounter;
-        uint componentCounter;
-        uint orderCounter;
-        uint partyCounter;
-    }
+    ComponentType[maxComponentTypes] public componentTypes;
+    Component[maxComponentTypes] public components;
+    Order[maxOrders] public orders;
+    Shipment[maxShipments] shipments;
 
-    Counters counters;
+    uint partiesCounter = 0;
+    uint componentTypesCounter = 0;
+    uint componentsCounter = 0;
+    uint ordersCounter = 0;
+    uint shipmentsCounter = 0;
 
     /**
     * Modifier ensure party levels
@@ -125,18 +142,56 @@ contract Storage {
         require(orders[orderId].status == status, message);
         _;
     }
-    
 
-    /**
-     * Add a new component type
-     *
-     */
+
+    function viewComponentTypes() public view returns(ComponentType[] memory) {
+        ComponentType[] memory componentTypesViewer = new ComponentType[](componentTypesCounter);
+        for (uint i = 0; i < componentTypesCounter; i++) {
+            componentTypesViewer[i] = componentTypes[i];
+        }
+        return componentTypesViewer;
+    }
+
+    function viewComponents() public view returns(Component[] memory) {
+        Component[] memory componentsViewer = new Component[](componentsCounter);
+        for (uint i = 0; i < componentsCounter; i++) {
+            componentsViewer[i] = components[i];
+        }
+        return componentsViewer;
+    }
+
+
+    function addParty(string memory name, bool isDeliveryParty, uint tier, string memory location) public {
+        parties[partiesCounter] = Party(partiesCounter, msg.sender, name, isDeliveryParty, tier, location);
+        partyNum[msg.sender] = partiesCounter;
+        partiesCounter++;
+    }
+
     function addComponentType(string memory name, uint[] memory subcomponents) public {
-        
+        for (uint i = 0; i < subcomponents.length; i++) {
+            require(subcomponents[i] < componentTypesCounter, "Subcomponent type does not exist");
+        }
+
+        componentTypes[componentTypesCounter] = ComponentType(componentTypesCounter, name, subcomponents);
+        componentTypesCounter++;
     }
 
     function addComponent(uint componentTypeId, uint[] memory subcomponents) public {
+        require(parties[partyNum[msg.sender]].owner == msg.sender, "Sender does not belong to any party");
+        require(componentTypeId < componentTypesCounter, "Component type does not exist");
+        
+        ComponentType memory componentType = componentTypes[componentTypeId];
+        require(componentType.subcomponentTypeIds.length == subcomponents.length, "Number of subcomponents given is wrong");
+        for (uint i = 0; i < subcomponents.length; i++) {
+            // string memory errorText = string(abi.encodePacked());
+            require(subcomponents[i] < componentsCounter, "At least one subcomponent does not exist");
+            require(components[subcomponents[i]].componentTypeId == componentType.subcomponentTypeIds[i], 
+                "At least one subcomponent is of the wrong type");
+        }
 
+        components[componentsCounter] = Component(componentsCounter, componentTypeId, 
+            subcomponents, partyNum[msg.sender], partyNum[msg.sender]);
+        componentsCounter++;
     }
 
     function placeOrder(uint sellerId, uint[] memory componentTypeIds, uint[] memory quantities) public {
@@ -154,6 +209,7 @@ contract Storage {
     function addOrderToShipment(uint orderId, uint shipmentId) public {
 
     }
+
 
     function updateOrderStatus(uint orderId) public {
         OrderStatus currentStatus = orders[orderId].status;
@@ -174,35 +230,39 @@ contract Storage {
 
     
     function cancelOrder(uint orderId) public
-    idCheck(orderId,counters.orderCounter)
+    idCheck(orderId, ordersCounter)
     checkStatus(orderId,OrderStatus.PLACED)
     {
         orders[orderId].status = OrderStatus.CANCELLED;
     }
 
-    function viewComponentTypes() public view returns(ComponentType[] memory){
-        return componentTypes;
-    }
+    // function viewComponentTypes() public view returns(ComponentType[] memory){
+    //     return componentTypes;
+    // }
 
     // function viewComponentTypeById(uint id) public view returns(ComponentType memory){
     //     return componentTypes[id];
     // }
 
-    function viewOrders() public view returns(Order[] memory){
-        return orders;
-    }
+    // function viewOrders() public view returns(Order[] memory){
+    //     return orders;
+    // }
 
     // function viewOrderById(uint id) public view returns(Order memory){
     //     return orders[id];
     // }
 
-    function viewShipments() public view returns(Shipment[] memory){
-        return shipments;
-    }
+    // function viewShipments() public view returns(Shipment[] memory){
+    //     return shipments;
+    // }
 
     // function viewShipmentById(uint id) public view returns(Shipment memory){
     //     return shipments[id];
     // }
+
+    function updateShipmentStatus(uint shipmentId) public {
+
+    }
 
 
  /*  C: sefhdziukhesd => {
@@ -253,3 +313,4 @@ contract Storage {
     */
 
 }
+
