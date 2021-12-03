@@ -1,0 +1,255 @@
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity >=0.7.0 <0.9.0;
+
+/**
+ * @title Storage
+ * @dev Store & retrieve value in a variable
+ */
+contract Storage {
+
+    enum OrderStatus {
+        PLACED,
+        CONFIRMED,
+        SHIPPED,
+        FINISHED,
+        CANCELLED
+    }
+
+    struct Party {
+        uint id;
+        address owner;
+        bool isDeliveryParty;
+        uint tier;
+        string location;
+    }
+
+
+    struct OrderComponent {
+        uint componentTypeId;
+        uint quantity;
+        uint[] componentIds;
+    }
+
+    struct Order {
+        uint id;
+        OrderComponent[] orderComponents;
+        int shipmentId;
+        uint buyerId;
+        uint sellerId;
+        OrderStatus status;
+    }
+
+    struct Shipment {
+        uint id;
+        uint[] orders;
+        uint buyerId;
+        uint sellerId;
+        uint shipperId;
+    }
+
+    struct Component {
+        uint id;
+        uint componentTypeId;
+        uint[] subcomponents;
+        uint manufacturerId;
+    }
+
+    struct ComponentType {
+        uint id;
+        string name;
+        uint[] subcomponents;
+    }
+
+    mapping(uint => Party) public parties;
+    mapping(address => uint) partyNum;
+    ComponentType[] componentTypes;
+    Order[] orders;
+    Shipment[] shipments;
+
+    struct Counters{
+        uint componentTypeCounter;
+        uint shipmentCounter;
+        uint componentCounter;
+        uint orderCounter;
+        uint partyCounter;
+    }
+
+    Counters counters;
+
+    /**
+    * Modifier ensure party levels
+    *
+    * @param party1 address of first party
+    * @param party2 address of second party
+    */
+    modifier tierParity(address party1,address party2) {
+        require(parties[partyNum[party1]].tier > parties[partyNum[party2]].tier ,"Given parties are not of allowed shipment hierarchy");
+        _;
+    }
+
+    /**
+    * Modifier ensures id exists
+    *
+    * @param id Id to check
+    * @param limit The upperbound, given by respective counter
+    */
+    modifier idCheck(uint id,uint limit) {
+        require(id <= limit && id>=0 ,"Given id is incorrect");
+        _;
+    }
+
+    /**
+    * Modifier to check the status of a given order
+    *
+    * @param orderId ID of order
+    * @param status required status, used to compare with order status
+    */
+    modifier checkStatus(uint orderId, OrderStatus status) {       
+        string memory message = "GG";
+        if (orders[orderId].status == OrderStatus.PLACED) {
+            message = "Order "; // ????????
+        } else if (orders[orderId].status == OrderStatus.CONFIRMED) {
+            message = "Order  ";
+        }else if (orders[orderId].status == OrderStatus.SHIPPED) {
+            message = "Order ";
+        } 
+        else if (orders[orderId].status == OrderStatus.FINISHED) {
+            message = "Order ";
+        } else if (orders[orderId].status == OrderStatus.CANCELLED) {
+            message = " ";
+        } else {
+            message = "Error. Please try initiating the transaction again.";
+        }
+        
+        require(orders[orderId].status == status, message);
+        _;
+    }
+    
+
+    /**
+     * Add a new component type
+     *
+     */
+    function addComponentType(string memory name, uint[] memory subcomponents) public {
+        
+    }
+
+    function addComponent(uint componentTypeId, uint[] memory subcomponents) public {
+
+    }
+
+    function placeOrder(uint sellerId, uint[] memory componentTypeIds, uint[] memory quantities) public {
+
+    }
+
+    function fillOrder(uint orderId, uint componentTypeId, uint[] memory componentIds) public {
+
+    }
+
+    function createShipment(uint buyerId, uint sellerId) public {
+
+    }
+
+    function addOrderToShipment(uint orderId, uint shipmentId) public {
+
+    }
+
+    function updateOrderStatus(uint orderId) public {
+        OrderStatus currentStatus = orders[orderId].status;
+        
+        if(currentStatus == OrderStatus.PLACED){
+            orders[orderId].status = OrderStatus.CONFIRMED;
+        }
+        else if(currentStatus == OrderStatus.CONFIRMED){
+            orders[orderId].status = OrderStatus.SHIPPED;
+        }
+        else if(currentStatus == OrderStatus.SHIPPED){
+            orders[orderId].status = OrderStatus.FINISHED;
+        }
+        else if(currentStatus == OrderStatus.CANCELLED){
+            orders[orderId].status = OrderStatus.PLACED;
+        }
+    }
+
+    
+    function cancelOrder(uint orderId) public
+    idCheck(orderId,counters.orderCounter)
+    checkStatus(orderId,OrderStatus.PLACED)
+    {
+        orders[orderId].status = OrderStatus.CANCELLED;
+    }
+
+    function viewComponentTypes() public view returns(ComponentType[] memory){
+        return componentTypes;
+    }
+
+    // function viewComponentTypeById(uint id) public view returns(ComponentType memory){
+    //     return componentTypes[id];
+    // }
+
+    function viewOrders() public view returns(Order[] memory){
+        return orders;
+    }
+
+    // function viewOrderById(uint id) public view returns(Order memory){
+    //     return orders[id];
+    // }
+
+    function viewShipments() public view returns(Shipment[] memory){
+        return shipments;
+    }
+
+    // function viewShipmentById(uint id) public view returns(Shipment memory){
+    //     return shipments[id];
+    // }
+
+
+ /*  C: sefhdziukhesd => {
+            sefhdziukhesd
+            0
+            []
+            esdf
+        }
+
+        CT: 0 => {
+            0
+            "screw"
+            []
+        }
+
+        C: dlsoxnmjgfdsxf => {
+            dlsoxnmjgfdsxf
+            1
+            []
+            saas
+        }
+
+        CT: 1 => {
+            1
+            "wood"
+            []
+        }
+
+        CT: 2 => {
+            2
+            "table"
+            [ 0, 1 ]
+        }
+
+        C: sadsadsad => {
+            sadsadsad
+            3
+            []
+        }
+
+        CT: 3 : "chair"
+
+        C: hkifhsdf => {
+            hkifhsdf
+            2
+            [ sefhdziukhesd, sadsadsad ]
+        }
+    */
+
+}
