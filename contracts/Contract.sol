@@ -58,7 +58,8 @@ contract Storage {
 
     struct Shipment {
         uint id;
-        uint[] orders;
+        uint numberOfOrders;
+        uint[maxOrdersInShipment] orders;
         uint buyerId;
         uint sellerId;
         uint shipperId;
@@ -110,9 +111,10 @@ contract Storage {
     *
     * @param id Id to check
     * @param limit The upperbound, given by respective counter
+    * @param mesg The error message to display
     */
-    modifier idCheck(uint id,uint limit) {
-        require(id <= limit && id>=0 ,"Given id is incorrect");
+    modifier idCheck(uint id,uint limit, string memory mesg) {
+        require(id <= limit && id>=0 ,mesg);
         _;
     }
 
@@ -176,9 +178,10 @@ contract Storage {
         componentTypesCounter++;
     }
 
-    function addComponent(uint componentTypeId, uint[] memory subcomponents) public {
+    function addComponent(uint componentTypeId, uint[] memory subcomponents) public 
+    idCheck(componentTypeId,componentTypesCounter,"Component type does not exist")
+    {
         require(parties[partyNum[msg.sender]].owner == msg.sender, "Sender does not belong to any party");
-        require(componentTypeId < componentTypesCounter, "Component type does not exist");
         
         ComponentType memory componentType = componentTypes[componentTypeId];
         require(componentType.subcomponentTypeIds.length == subcomponents.length, "Number of subcomponents given is wrong");
@@ -202,12 +205,24 @@ contract Storage {
 
     }
 
-    function createShipment(uint buyerId, uint sellerId) public {
+    function createShipment(uint buyerId, uint sellerId,uint shipperId) public 
+    idCheck(shipmentsCounter+1,maxShipments,"Maximum number of shipments reached")
+    {
+        shipmentsCounter ++;
+        uint [maxOrdersInShipment] memory tempOrdersInShipment;
+        shipments[shipmentsCounter]= Shipment(shipmentsCounter,0,tempOrdersInShipment,buyerId,sellerId,shipperId);
+     }
 
-    }
+    function addOrderToShipment(uint orderId, uint shipmentId) public 
+    idCheck(orderId, ordersCounter,"Order Id does not exist")
+    idCheck(shipmentId, shipmentsCounter,"Shipment Id does not exist")
+    idCheck(shipments[shipmentId].numberOfOrders,maxOrdersInShipment,"Maximum orders in shipment reached")
+    {
+        uint temp = shipments[shipmentId].numberOfOrders;
+        temp+=1;
 
-    function addOrderToShipment(uint orderId, uint shipmentId) public {
-
+        shipments[shipmentId].orders[temp] = orderId;
+        shipments[shipmentId].numberOfOrders = temp;
     }
 
 
@@ -230,38 +245,19 @@ contract Storage {
 
     
     function cancelOrder(uint orderId) public
-    idCheck(orderId, ordersCounter)
+    idCheck(orderId, ordersCounter,"Order Id does not exist")
     checkStatus(orderId,OrderStatus.PLACED)
     {
         orders[orderId].status = OrderStatus.CANCELLED;
     }
 
-    // function viewComponentTypes() public view returns(ComponentType[] memory){
-    //     return componentTypes;
-    // }
-
-    // function viewComponentTypeById(uint id) public view returns(ComponentType memory){
-    //     return componentTypes[id];
-    // }
-
-    // function viewOrders() public view returns(Order[] memory){
-    //     return orders;
-    // }
-
-    // function viewOrderById(uint id) public view returns(Order memory){
-    //     return orders[id];
-    // }
-
-    // function viewShipments() public view returns(Shipment[] memory){
-    //     return shipments;
-    // }
-
-    // function viewShipmentById(uint id) public view returns(Shipment memory){
-    //     return shipments[id];
-    // }
-
-    function updateShipmentStatus(uint shipmentId) public {
-
+    function updateShipmentStatus(uint shipmentId) public 
+    idCheck(shipmentId, shipmentsCounter,"Shipment Id does not exist")
+    {
+        for (uint i = 0; i < shipments[shipmentId].numberOfOrders; i++) {
+            uint tempOrderId = shipments[shipmentId].orders[i];
+            orders[tempOrderId].status = OrderStatus.SHIPPED;
+        }
     }
 
 
