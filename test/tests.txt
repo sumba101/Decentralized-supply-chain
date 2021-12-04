@@ -1,0 +1,184 @@
+1) Successful Workflow
+
+	First we add buyer and seller and delivery party
+		Buyer:
+		addParty("MainParty", false, 1, "Hyderabad");
+
+		Seller:
+		addParty("SellerParty", false, 2, "Hyderabad");
+
+		Delivery:
+		addParty("DeliveryParty", true, 1, "Hyderabad");
+
+	The necessary component types and components are added
+		
+		addComponentType("nail", []);
+		addComponentType("screw", []);
+		addComponentType("chair", [0, 1]);
+		addComponent(0, []);
+		addComponent(0, []);
+		addComponent(0, []);
+		addComponent(0, []);
+		addComponent(1, []);
+		addComponent(1, []);
+		addComponent(1, []);
+		addComponent(1, []);
+		addComponent(2, [0, 4]);
+		addComponent(2, [1, 5]);
+
+	Next, Buyer places order
+
+		Buyer:
+		placeOrder(1, [0, 2], [2, 2]);
+
+	Seller fills the corresponding orders and does the confirmation
+
+		Seller:
+		fillOrder(0, 0, [0, 1]);
+		fillOrder(0, 1, [8, 9]);
+		confirmOrder(0);
+
+	Now, Delivery party creates shipment, adds orders to shipment
+
+		Delivery:
+		createShipment(0, 1);
+		addOrderToShipment(0, 0);
+
+	The order status of the orders in shipment is updated to SHIPPED
+
+		updateShipmentStatus(0);
+
+	After shipment is completed, Delivery partner calls complete shipment function
+		completeShipment(0);
+
+2) Error at Fill Order because user is not seller party
+	First we add buyer and seller and delivery party
+		Buyer:
+		addParty("MainParty", false, 1, "Hyderabad");
+
+		Seller:
+		addParty("SellerParty", false, 2, "Hyderabad");
+
+		Delivery:
+		addParty("DeliveryParty", true, 1, "Hyderabad");
+
+	The necessary component types and components are added
+		
+		addComponentType("nail", []);
+		addComponentType("screw", []);
+		addComponentType("chair", [0, 1]);
+		addComponent(0, []);
+		addComponent(0, []);
+		addComponent(0, []);
+		addComponent(0, []);
+		addComponent(1, []);
+		addComponent(1, []);
+		addComponent(1, []);
+		addComponent(1, []);
+		addComponent(2, [0, 4]);
+		addComponent(2, [1, 5]);
+
+	Next, Buyer places order
+
+		Buyer:
+		placeOrder(1, [0, 2], [2, 2]);
+
+	Here, assume a different party than Seller (eg Buyer) calls upon fillOrder
+		Buyer:
+		fillOrder(0, 0, [0, 1]);
+
+	An error is produced with the message
+		"Sender does not belong to the seller party"
+
+3) Error at Cancel Order because user is neither buyer nor seller
+	First we add buyer and seller and delivery party
+		Buyer:
+		addParty("MainParty", false, 1, "Hyderabad");
+
+		Seller:
+		addParty("SellerParty", false, 2, "Hyderabad");
+
+		Delivery:
+		addParty("DeliveryParty", true, 1, "Hyderabad");
+
+	The necessary component types and components are added
+		
+		addComponentType("nail", []);
+		addComponentType("screw", []);
+		addComponentType("chair", [0, 1]);
+		addComponent(0, []);
+		addComponent(0, []);
+		addComponent(0, []);
+		addComponent(0, []);
+		addComponent(1, []);
+		addComponent(1, []);
+		addComponent(1, []);
+		addComponent(1, []);
+		addComponent(2, [0, 4]);
+		addComponent(2, [1, 5]);
+
+	Next, Buyer places order
+
+		Buyer:
+		placeOrder(1, [0, 2], [2, 2]);
+
+	Here, assume a party other than seller or buyer tries to cancel order
+		Delivery:
+			cancelOrder(0)
+
+	An error is thrown with the message
+		"Sender is not buyer or seller"
+
+4) Error at Update Shipment Status due to some order not having COMPLETED as order status
+	First we add buyer and seller and delivery party
+		Buyer:
+		addParty("MainParty", false, 1, "Hyderabad");
+
+		Seller:
+		addParty("SellerParty", false, 2, "Hyderabad");
+
+		Delivery:
+		addParty("DeliveryParty", true, 1, "Hyderabad");
+
+	The necessary component types and components are added
+		
+		addComponentType("nail", []);
+		addComponentType("screw", []);
+		addComponentType("chair", [0, 1]);
+		addComponent(0, []);
+		addComponent(0, []);
+		addComponent(0, []);
+		addComponent(0, []);
+		addComponent(1, []);
+		addComponent(1, []);
+		addComponent(1, []);
+		addComponent(1, []);
+		addComponent(2, [0, 4]);
+		addComponent(2, [1, 5]);
+
+	Next, Buyer places order
+
+		Buyer:
+		placeOrder(1, [0, 2], [2, 2]);
+
+	Seller fills the corresponding orders and does the confirmation
+
+		Seller:
+		fillOrder(0, 0, [0, 1]);
+		fillOrder(0, 1, [8, 9]);
+
+			NOTE HERE THE ORDER HAS NOT BEEN CONFIRMED
+
+	Now, Delivery party creates shipment, adds orders to shipment
+
+		Delivery:
+		createShipment(0, 1);
+		addOrderToShipment(0, 0);
+
+	The order status of the orders in shipment is updated to SHIPPED
+
+		updateShipmentStatus(0);
+	
+	An error is produced with the message 
+		"All orders in shipment have not been confirmed"
+
