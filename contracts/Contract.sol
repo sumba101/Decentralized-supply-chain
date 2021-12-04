@@ -80,7 +80,7 @@ contract SupplyChain {
     }
 
     Party[maxParties] public parties;
-    mapping(address => uint) partyNum;
+    mapping(address => uint) public partyNum;
 
     ComponentType[maxComponentTypes] public componentTypes;
     Component[maxComponentTypes] public components;
@@ -297,6 +297,8 @@ contract SupplyChain {
     tierParity(partyNum[msg.sender],sellerId)    
     {
         require(parties[partyNum[msg.sender]].owner == msg.sender, "Sender does not belong to any party");
+        require(parties[sellerId].owner != msg.sender, "Buyer cannot be the seller");
+        require(parties[sellerId].isDeliveryParty != true, "Seller cannot be a delivery party");
 
         for (uint i = 0; i < quantities.length; i++) {
             require(componentTypeIds[i] < componentTypesCounter, "Component type does not exist");
@@ -334,13 +336,18 @@ contract SupplyChain {
             require(components[componentIds[j]].possessorId == partyNum[msg.sender], "At least one component is not owned by sender");
         }
 
+        bool found = false;
         for (uint i = 0; i < orders[orderId].orderComponents.length; i++) {
             if (orders[orderId].orderComponents[i].componentTypeId == componentTypeId) {
                 require(orders[orderId].orderComponents[i].quantity == componentIds.length, 
                     "Wrong quantity of component IDs provided");
                 orders[orderId].orderComponents[i].componentIds = componentIds; 
+                found = true;
                 break;
             }
+        }
+        if (found == false) {
+            revert("Wrong component type ID");
         }
     }
 
