@@ -34,7 +34,7 @@ A decentralized supply chain trace- ability application that uses input at every
 * Orders are placed using placeOrder
 * The respective orders are filled using fillOrder
 * Orders are confirmed by delivery providers with confirmOrder
-	* Up until an order has been confirmed, order initiating parties have the ability to cancel it with cancelOrder
+	* Up until an order has been confirmed, either order buyer or seller have the ability to cancel it with cancelOrder
 * Shipment is created by delivery service providing party and orders are added to shipment with addOrderToShipment
 * Upon shipment completion the orders are finished with completeShipment
 
