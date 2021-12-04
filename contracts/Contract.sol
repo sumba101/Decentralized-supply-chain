@@ -101,8 +101,8 @@ contract Storage {
     * @param party1 address of first party
     * @param party2 address of second party
     */
-    modifier tierParity(address party1,address party2) {
-        require(parties[partyNum[party1]].tier > parties[partyNum[party2]].tier ,"Given parties are not of allowed shipment hierarchy");
+    modifier tierParity(uint party1,uint party2) {
+        require(parties[party1].tier > parties[party2].tier ,"Buyer has to be in a tier lower than or equal to seller");
         _;
     }
 
@@ -205,10 +205,11 @@ contract Storage {
         componentsCounter++;
     }
 
-    function placeOrder(uint sellerId, uint[] memory componentTypeIds, uint[] memory quantities) public {
+    function placeOrder(uint sellerId, uint[] memory componentTypeIds, uint[] memory quantities) public 
+    idCheck(sellerId,partiesCounter,"Seller does not exist")
+    tierParity(partyNum[msg.sender],sellerId)    
+    {
         require(parties[partyNum[msg.sender]].owner == msg.sender, "Sender does not belong to any party");
-        require(sellerId < partiesCounter, "Seller does not exist");
-        require(parties[partyNum[msg.sender]].tier <= parties[sellerId].tier, "Buyer has to be in a tier lower than or equal to seller");
 
         for (uint i = 0; i < quantities.length; i++) {
             require(componentTypeIds[i] < componentTypesCounter, "Component type does not exist");
