@@ -102,7 +102,7 @@ contract Storage {
     * @param party2 address of second party
     */
     modifier tierParity(uint party1,uint party2) {
-        require(parties[party1].tier > parties[party2].tier ,"Buyer has to be in a tier lower than or equal to seller");
+        require(parties[party1].tier <= parties[party2].tier ,"Buyer has to be in a tier lower than or equal to seller");
         _;
     }
 
@@ -171,13 +171,17 @@ contract Storage {
     }
 
 
-    function addParty(string memory name, bool isDeliveryParty, uint tier, string memory location) public {
+    function addParty(string memory name, bool isDeliveryParty, uint tier, string memory location) public 
+    idCheck(partiesCounter,maxParties,"Maximum number of parties reached")
+    {
         parties[partiesCounter] = Party(partiesCounter, msg.sender, name, isDeliveryParty, tier, location);
         partyNum[msg.sender] = partiesCounter;
         partiesCounter++;
     }
 
-    function addComponentType(string memory name, uint[] memory subcomponents) public {
+    function addComponentType(string memory name, uint[] memory subcomponents) public 
+    idCheck(componentTypesCounter,maxComponentTypes,"Maximum number of component types reached")
+    {
         for (uint i = 0; i < subcomponents.length; i++) {
             require(subcomponents[i] < componentTypesCounter, "Subcomponent type does not exist");
         }
@@ -187,6 +191,7 @@ contract Storage {
     }
 
     function addComponent(uint componentTypeId, uint[] memory subcomponents) public 
+    idCheck(componentsCounter,maxComponents,"Maximum number of components reached")
     idCheck(componentTypeId,componentTypesCounter,"Component type does not exist")
     {
         require(parties[partyNum[msg.sender]].owner == msg.sender, "Sender does not belong to any party");
@@ -194,7 +199,6 @@ contract Storage {
         ComponentType memory componentType = componentTypes[componentTypeId];
         require(componentType.subcomponentTypeIds.length == subcomponents.length, "Number of subcomponents given is wrong");
         for (uint i = 0; i < subcomponents.length; i++) {
-            // string memory errorText = string(abi.encodePacked());
             require(subcomponents[i] < componentsCounter, "At least one subcomponent does not exist");
             require(components[subcomponents[i]].componentTypeId == componentType.subcomponentTypeIds[i], 
                 "At least one subcomponent is of the wrong type");
@@ -207,6 +211,7 @@ contract Storage {
 
     function placeOrder(uint sellerId, uint[] memory componentTypeIds, uint[] memory quantities) public 
     idCheck(sellerId,partiesCounter,"Seller does not exist")
+    idCheck(ordersCounter,maxOrders,"Maximum number of orders reached")
     tierParity(partyNum[msg.sender],sellerId)    
     {
         require(parties[partyNum[msg.sender]].owner == msg.sender, "Sender does not belong to any party");
@@ -228,7 +233,8 @@ contract Storage {
         ordersCounter++;
     }
 
-    function fillOrder(uint orderId, uint componentTypeId, uint[] memory componentIds) public {
+    function fillOrder(uint orderId, uint componentTypeId, uint[] memory componentIds) public 
+    {
         require(parties[partyNum[msg.sender]].owner == msg.sender, "Sender does not belong to any party");
         require(partyNum[msg.sender] == orders[orderId].sellerId, "Sender does not belong to the seller party");
 
@@ -247,11 +253,11 @@ contract Storage {
     }
 
     function createShipment(uint buyerId, uint sellerId,uint shipperId) public 
-    idCheck(shipmentsCounter+1,maxShipments,"Maximum number of shipments reached")
+    idCheck(shipmentsCounter,maxShipments,"Maximum number of shipments reached")
     {
-        shipmentsCounter ++;
         uint [maxOrdersInShipment] memory tempOrdersInShipment;
         shipments[shipmentsCounter]= Shipment(shipmentsCounter,0,tempOrdersInShipment,buyerId,sellerId,shipperId);
+        shipmentsCounter ++;
      }
 
     function addOrderToShipment(uint orderId, uint shipmentId) public 
