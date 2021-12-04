@@ -7,7 +7,7 @@ pragma experimental ABIEncoderV2;
  * @title Storage
  * @dev Store & retrieve value in a variable
  */
-contract Storage {
+contract SupplyChain {
     uint constant maxOrders = 100;
     uint constant maxParties = 10;
     uint constant maxShipments = 100;
@@ -71,7 +71,7 @@ contract Storage {
         // uint[] subcomponentTypeIds;
         uint[] subcomponentIds;
         uint manufacturerId;
-        uint ownerId;
+        uint possessorId;
     }
 
     struct ComponentType {
@@ -113,7 +113,7 @@ contract Storage {
     * @param limit The upperbound, given by respective counter
     * @param mesg The error message to display
     */
-    modifier idCheck(uint id,uint limit, string memory mesg) {
+    modifier idCheck(uint id, uint limit, string memory mesg) {
         require(id <= limit && id>=0 ,mesg);
         _;
     }
@@ -127,18 +127,17 @@ contract Storage {
     modifier checkStatus(uint orderId, OrderStatus status) {       
         string memory message = "GG";
         if (orders[orderId].status == OrderStatus.PLACED) {
-            message = "Order "; // ????????
+            message = "Order has to be confirmed"; // ????????
         } else if (orders[orderId].status == OrderStatus.CONFIRMED) {
-            message = "Order  ";
-        }else if (orders[orderId].status == OrderStatus.SHIPPED) {
-            message = "Order ";
-        } 
-        else if (orders[orderId].status == OrderStatus.FINISHED) {
-            message = "Order ";
+            message = "Order has been confirmed, has to be shipped";
+        } else if (orders[orderId].status == OrderStatus.SHIPPED) {
+            message = "Order has been shipped";
+        } else if (orders[orderId].status == OrderStatus.FINISHED) {
+            message = "Order has been delivered and finished";
         } else if (orders[orderId].status == OrderStatus.CANCELLED) {
-            message = " ";
+            message = "Order has been cancelled";
         } else {
-            message = "Error. Please try initiating the transaction again.";
+            message = "Error. Please try initiating the shipment again.";
         }
         
         require(orders[orderId].status == status, message);
@@ -214,14 +213,22 @@ contract Storage {
         componentTypesCounter++;
     }
 
+    event Debug(uint);
+
     function addComponent(uint componentTypeId, uint[] memory subcomponents) public 
     idCheck(componentsCounter,maxComponents,"Maximum number of components reached")
     idCheck(componentTypeId,componentTypesCounter,"Component type does not exist")
     {
         require(parties[partyNum[msg.sender]].owner == msg.sender, "Sender does not belong to any party");
         
-        ComponentType memory componentType = componentTypes[componentTypeId];
+        
+        ComponentType storage componentType = componentTypes[componentTypeId];
+
+        emit Debug(componentType.subcomponentTypeIds.length);
+        emit Debug(subcomponents.length);
+
         require(componentType.subcomponentTypeIds.length == subcomponents.length, "Number of subcomponents given is wrong");
+
         for (uint i = 0; i < subcomponents.length; i++) {
             require(subcomponents[i] < componentsCounter, "At least one subcomponent does not exist");
             require(components[subcomponents[i]].componentTypeId == componentType.subcomponentTypeIds[i], 
@@ -243,9 +250,11 @@ contract Storage {
         for (uint i = 0; i < quantities.length; i++) {
             require(componentTypeIds[i] < componentTypesCounter, "Component type does not exist");
             require(quantities[i] > 0, "Invalid quantity");
+
             orders[ordersCounter].orderComponents[i].quantity = quantities[i];
             orders[ordersCounter].orderComponents[i].componentTypeId = componentTypeIds[i];
             orders[ordersCounter].orderComponents[i].componentIds = new uint[](0);
+
         }
 
         orders[ordersCounter].id = ordersCounter;
@@ -264,6 +273,7 @@ contract Storage {
 
         for (uint j = 0; j < componentIds.length; j++) {
             require(componentIds[j] < componentsCounter, "At least one component does not exist");
+            require(components[componentIds[j]].possessorId == partyNum[msg.sender], "At least one component is not owned by sender");
         }
 
         for (uint i = 0; i < orders[orderId].orderComponents.length; i++) {
@@ -276,109 +286,84 @@ contract Storage {
         }
     }
 
-    function createShipment(uint buyerId, uint sellerId,uint shipperId) public 
+    function createShipment(uint buyerId, uint sellerId) public 
     idCheck(shipmentsCounter,maxShipments,"Maximum number of shipments reached")
     {
+        require(parties[partyNum[msg.sender]].isDeliveryParty == true, "Party is not delivery party and cannot create shipment");
+        
         uint [maxOrdersInShipment] memory tempOrdersInShipment;
-        shipments[shipmentsCounter]= Shipment(shipmentsCounter,0,tempOrdersInShipment,buyerId,sellerId,shipperId);
-        shipmentsCounter ++;
-     }
+        shipments[shipmentsCounter]= Shipment(shipmentsCounter, 0, tempOrdersInShipment, buyerId, sellerId, partyNum[msg.sender]);
+        shipmentsCounter++;
+    }
 
     function addOrderToShipment(uint orderId, uint shipmentId) public 
     idCheck(orderId, ordersCounter,"Order Id does not exist")
     idCheck(shipmentId, shipmentsCounter,"Shipment Id does not exist")
-    idCheck(shipments[shipmentId].numberOfOrders,maxOrdersInShipment,"Maximum orders in shipment reached")
+    idCheck(shipments[shipmentId].numberOfOrders, maxOrdersInShipment,"Maximum orders in shipment reached")
     {
+        require(parties[partyNum[msg.sender]].isDeliveryParty == true, "Party is not delivery party and cannot add to shipment");
+        require(shipments[shipmentId].shipperId == partyNum[msg.sender], "Sender is not the shipper");
+
+        orders[orderId].shipmentId = int(partyNum[msg.sender]);
         uint temp = shipments[shipmentId].numberOfOrders;
         shipments[shipmentId].orders[temp] = orderId;
         temp+=1;
         shipments[shipmentId].numberOfOrders = temp;
     }
 
-
     function confirmOrder(uint orderId) public 
     idCheck(orderId,ordersCounter,"Order Id does not exist")
     checkStatus(orderId,OrderStatus.PLACED)
     {
+        require(partyNum[msg.sender] == orders[orderId].sellerId, "Sender is not the seller. Only seller can confirm order");
         orders[orderId].status = OrderStatus.CONFIRMED;
         
     }
-
     
     function cancelOrder(uint orderId) public
     idCheck(orderId, ordersCounter,"Order Id does not exist")
     checkStatus(orderId,OrderStatus.PLACED)
     {
+        require(partyNum[msg.sender] == orders[orderId].buyerId || partyNum[msg.sender] == orders[orderId].sellerId, 
+            "Sender is not buyer or seller");
         orders[orderId].status = OrderStatus.CANCELLED;
     }
 
     function updateShipmentStatus(uint shipmentId) public 
     idCheck(shipmentId, shipmentsCounter,"Shipment Id does not exist")
     {
+        require(shipments[shipmentId].shipperId == partyNum[msg.sender], "Sender is not shipper");
         for (uint i = 0; i < shipments[shipmentId].numberOfOrders; i++) {
             uint tempOrderId = shipments[shipmentId].orders[i];
             require(orders[tempOrderId].status == OrderStatus.CONFIRMED,"All orders in shipment have not been confirmed");
             orders[tempOrderId].status = OrderStatus.SHIPPED;
+
+            for (uint j = 0; j < orders[tempOrderId].orderComponents.length; j++) {
+                for (uint k = 0; k < orders[tempOrderId].orderComponents[j].componentIds.length; k++) {
+                    components[orders[tempOrderId].orderComponents[j].componentIds[k]].possessorId = partyNum[msg.sender];
+                }
+            }
         }
     }
 
     function completeShipment(uint shipmentId) public 
     idCheck(shipmentId, shipmentsCounter,"Shipment Id does not exist")
     {
+        require(shipments[shipmentId].shipperId == partyNum[msg.sender], "Sender is not shipper");
         for (uint i = 0; i < shipments[shipmentId].numberOfOrders; i++) {
             uint tempOrderId = shipments[shipmentId].orders[i];
             require(orders[tempOrderId].status == OrderStatus.SHIPPED,"All orders in shipment have not been confirmed");
             orders[tempOrderId].status = OrderStatus.FINISHED;
+
+            
+            for (uint j = 0; j < orders[tempOrderId].orderComponents.length; j++) {
+                for (uint k = 0; k < orders[tempOrderId].orderComponents[j].componentIds.length; k++) {
+                    components[orders[tempOrderId].orderComponents[j].componentIds[k]].possessorId = orders[tempOrderId].buyerId;
+                }
+            }
         }
     }
 
-
- /*  C: sefhdziukhesd => {
-            sefhdziukhesd
-            0
-            []
-            esdf
-        }
-
-        CT: 0 => {
-            0
-            "screw"
-            []
-        }
-
-        C: dlsoxnmjgfdsxf => {
-            dlsoxnmjgfdsxf
-            1
-            []
-            saas
-        }
-
-        CT: 1 => {
-            1
-            "wood"
-            []
-        }
-
-        CT: 2 => {
-            2
-            "table"
-            [ 0, 1 ]
-        }
-
-        C: sadsadsad => {
-            sadsadsad
-            3
-            []
-        }
-
-        CT: 3 : "chair"
-
-        C: hkifhsdf => {
-            hkifhsdf
-            2
-            [ sefhdziukhesd, sadsadsad ]
-        }
-    */
-
 }
+
 
