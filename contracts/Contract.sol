@@ -145,6 +145,7 @@ contract Storage {
         _;
     }
 
+// ======================================
 
     function viewComponentTypes() public view returns(ComponentType[] memory) {
         ComponentType[] memory componentTypesViewer = new ComponentType[](componentTypesCounter);
@@ -170,6 +171,29 @@ contract Storage {
         return ordersViewer;
     }
 
+    function viewOrder(uint id) public 
+    idCheck(id,ordersCounter,"Order id doesnt exist")
+    view returns(Order memory) {
+        Order memory ordersViewer = orders[id];
+        return ordersViewer;
+    }
+
+    function viewShipments() public view returns(Shipment[] memory) {
+        Shipment[] memory shipmentView = new Shipment[](shipmentsCounter);
+        for (uint i = 0; i < shipmentsCounter; i++) {
+            shipmentView[i] = shipments[i];
+        }
+        return shipmentView;
+    }
+
+    function viewShipment(uint id) public 
+    idCheck(id,shipmentsCounter,"Shipment id does not exist")
+    view returns(Shipment memory) {
+        Shipment memory shipmentView = shipments[id];
+        return shipmentView;
+    }
+
+// =============================================
 
     function addParty(string memory name, bool isDeliveryParty, uint tier, string memory location) public 
     idCheck(partiesCounter,maxParties,"Maximum number of parties reached")
@@ -266,28 +290,18 @@ contract Storage {
     idCheck(shipments[shipmentId].numberOfOrders,maxOrdersInShipment,"Maximum orders in shipment reached")
     {
         uint temp = shipments[shipmentId].numberOfOrders;
-        temp+=1;
-
         shipments[shipmentId].orders[temp] = orderId;
+        temp+=1;
         shipments[shipmentId].numberOfOrders = temp;
     }
 
 
-    function updateOrderStatus(uint orderId) public {
-        OrderStatus currentStatus = orders[orderId].status;
+    function confirmOrder(uint orderId) public 
+    idCheck(orderId,ordersCounter,"Order Id does not exist")
+    checkStatus(orderId,OrderStatus.PLACED)
+    {
+        orders[orderId].status = OrderStatus.CONFIRMED;
         
-        if(currentStatus == OrderStatus.PLACED){
-            orders[orderId].status = OrderStatus.CONFIRMED;
-        }
-        else if(currentStatus == OrderStatus.CONFIRMED){
-            orders[orderId].status = OrderStatus.SHIPPED;
-        }
-        else if(currentStatus == OrderStatus.SHIPPED){
-            orders[orderId].status = OrderStatus.FINISHED;
-        }
-        else if(currentStatus == OrderStatus.CANCELLED){
-            orders[orderId].status = OrderStatus.PLACED;
-        }
     }
 
     
@@ -303,7 +317,18 @@ contract Storage {
     {
         for (uint i = 0; i < shipments[shipmentId].numberOfOrders; i++) {
             uint tempOrderId = shipments[shipmentId].orders[i];
+            require(orders[tempOrderId].status == OrderStatus.CONFIRMED,"All orders in shipment have not been confirmed");
             orders[tempOrderId].status = OrderStatus.SHIPPED;
+        }
+    }
+
+    function completeShipment(uint shipmentId) public 
+    idCheck(shipmentId, shipmentsCounter,"Shipment Id does not exist")
+    {
+        for (uint i = 0; i < shipments[shipmentId].numberOfOrders; i++) {
+            uint tempOrderId = shipments[shipmentId].orders[i];
+            require(orders[tempOrderId].status == OrderStatus.SHIPPED,"All orders in shipment have not been confirmed");
+            orders[tempOrderId].status = OrderStatus.FINISHED;
         }
     }
 
