@@ -162,6 +162,14 @@ contract Storage {
         return componentsViewer;
     }
 
+    function viewOrders() public view returns(Order[] memory) {
+        Order[] memory ordersViewer = new Order[](ordersCounter);
+        for (uint i = 0; i < ordersCounter; i++) {
+            ordersViewer[i] = orders[i];
+        }
+        return ordersViewer;
+    }
+
 
     function addParty(string memory name, bool isDeliveryParty, uint tier, string memory location) public {
         parties[partiesCounter] = Party(partiesCounter, msg.sender, name, isDeliveryParty, tier, location);
@@ -198,11 +206,43 @@ contract Storage {
     }
 
     function placeOrder(uint sellerId, uint[] memory componentTypeIds, uint[] memory quantities) public {
+        require(parties[partyNum[msg.sender]].owner == msg.sender, "Sender does not belong to any party");
+        require(sellerId < partiesCounter, "Seller does not exist");
+        require(parties[partyNum[msg.sender]].tier <= parties[sellerId].tier, "Buyer has to be in a tier lower than or equal to seller");
 
+        for (uint i = 0; i < quantities.length; i++) {
+            require(componentTypeIds[i] < componentTypesCounter, "Component type does not exist");
+            require(quantities[i] > 0, "Invalid quantity");
+            orders[ordersCounter].orderComponents[i].quantity = quantities[i];
+            orders[ordersCounter].orderComponents[i].componentTypeId = componentTypeIds[i];
+            orders[ordersCounter].orderComponents[i].componentIds = new uint[](0);
+        }
+
+        orders[ordersCounter].id = ordersCounter;
+        orders[ordersCounter].shipmentId = -1;
+        orders[ordersCounter].buyerId = partyNum[msg.sender];
+        orders[ordersCounter].sellerId = sellerId;
+        orders[ordersCounter].status = OrderStatus.PLACED;
+    
+        ordersCounter++;
     }
 
     function fillOrder(uint orderId, uint componentTypeId, uint[] memory componentIds) public {
+        require(parties[partyNum[msg.sender]].owner == msg.sender, "Sender does not belong to any party");
+        require(partyNum[msg.sender] == orders[orderId].sellerId, "Sender does not belong to the seller party");
 
+        for (uint j = 0; j < componentIds.length; j++) {
+            require(componentIds[j] < componentsCounter, "At least one component does not exist");
+        }
+
+        for (uint i = 0; i < orders[orderId].orderComponents.length; i++) {
+            if (orders[orderId].orderComponents[i].componentTypeId == componentTypeId) {
+                require(orders[orderId].orderComponents[i].quantity == componentIds.length, 
+                    "Wrong quantity of component IDs provided");
+                orders[orderId].orderComponents[i].componentIds = componentIds; 
+                break;
+            }
+        }
     }
 
     function createShipment(uint buyerId, uint sellerId,uint shipperId) public 
