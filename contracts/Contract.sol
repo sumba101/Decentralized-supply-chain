@@ -68,7 +68,6 @@ contract SupplyChain {
     struct Component {
         uint id;
         uint componentTypeId;
-        // uint[] subcomponentTypeIds;
         uint[] subcomponentIds;
         uint manufacturerId;
         uint possessorId;
@@ -78,7 +77,6 @@ contract SupplyChain {
         uint id;
         string name;
         uint[] subcomponentTypeIds;
-        // uint[] subcomponentQuantities;
     }
 
     Party[maxParties] public parties;
@@ -146,6 +144,10 @@ contract SupplyChain {
 
 // ======================================
 
+    /**
+    * View for ComponentTypes
+    *
+    */
     function viewComponentTypes() public view returns(ComponentType[] memory) {
         ComponentType[] memory componentTypesViewer = new ComponentType[](componentTypesCounter);
         for (uint i = 0; i < componentTypesCounter; i++) {
@@ -154,6 +156,10 @@ contract SupplyChain {
         return componentTypesViewer;
     }
 
+    /**
+    * View for Components
+    *
+    */
     function viewComponents() public view returns(Component[] memory) {
         Component[] memory componentsViewer = new Component[](componentsCounter);
         for (uint i = 0; i < componentsCounter; i++) {
@@ -162,6 +168,10 @@ contract SupplyChain {
         return componentsViewer;
     }
 
+    /**
+    * View for Order
+    *
+    */
     function viewOrders() public view returns(Order[] memory) {
         Order[] memory ordersViewer = new Order[](ordersCounter);
         for (uint i = 0; i < ordersCounter; i++) {
@@ -170,6 +180,11 @@ contract SupplyChain {
         return ordersViewer;
     }
 
+    /**
+    * View for Order of Specific id
+    *
+    * @param id ID of order
+    */
     function viewOrder(uint id) public 
     idCheck(id,ordersCounter,"Order id doesnt exist")
     view returns(Order memory) {
@@ -177,6 +192,10 @@ contract SupplyChain {
         return ordersViewer;
     }
 
+    /**
+    * View for Shipments
+    *
+    */
     function viewShipments() public view returns(Shipment[] memory) {
         Shipment[] memory shipmentView = new Shipment[](shipmentsCounter);
         for (uint i = 0; i < shipmentsCounter; i++) {
@@ -185,6 +204,11 @@ contract SupplyChain {
         return shipmentView;
     }
 
+    /**
+    * View for Shipment of Specific id
+    *
+    * @param id ID of Shipment
+    */
     function viewShipment(uint id) public 
     idCheck(id,shipmentsCounter,"Shipment id does not exist")
     view returns(Shipment memory) {
@@ -194,6 +218,14 @@ contract SupplyChain {
 
 // =============================================
 
+    /**
+    * Function adds new Party
+    *
+    * @param name Name of party
+    * @param isDeliveryParty Denotes if party is delivery party or not
+    * @param tier Denotes the tier level of party
+    * @param location Physical location of party
+    */
     function addParty(string memory name, bool isDeliveryParty, uint tier, string memory location) public 
     idCheck(partiesCounter,maxParties,"Maximum number of parties reached")
     {
@@ -202,6 +234,12 @@ contract SupplyChain {
         partiesCounter++;
     }
 
+    /**
+    * Function adds new Component Type
+    *
+    * @param name Name of Component Type
+    * @param subcomponents Denotes the subcomponent ids for the Component Type if any
+    */
     function addComponentType(string memory name, uint[] memory subcomponents) public 
     idCheck(componentTypesCounter,maxComponentTypes,"Maximum number of component types reached")
     {
@@ -215,6 +253,12 @@ contract SupplyChain {
 
     event Debug(uint);
 
+    /**
+    * Function adds new Component
+    *
+    * @param componentTypeId Id of the componentType of the Component
+    * @param subcomponents Denotes the subcomponent ids for the Component if any
+    */
     function addComponent(uint componentTypeId, uint[] memory subcomponents) public 
     idCheck(componentsCounter,maxComponents,"Maximum number of components reached")
     idCheck(componentTypeId,componentTypesCounter,"Component type does not exist")
@@ -240,6 +284,13 @@ contract SupplyChain {
         componentsCounter++;
     }
 
+    /**
+    * Function for placing Order
+    *
+    * @param sellerId Denotes the seller
+    * @param componentTypeIds ComponentTypeIds of order
+    * @param quantities Quantities of respective componentTypeIds
+    */
     function placeOrder(uint sellerId, uint[] memory componentTypeIds, uint[] memory quantities) public 
     idCheck(sellerId,partiesCounter,"Seller does not exist")
     idCheck(ordersCounter,maxOrders,"Maximum number of orders reached")
@@ -266,6 +317,13 @@ contract SupplyChain {
         ordersCounter++;
     }
 
+    /**
+    * Function for filling order of buyer
+    *
+    * @param orderId Id of order to fill
+    * @param componentTypeId Denotes id of componentType
+    * @param componentIds Denotes array of componentIds to assign
+    */
     function fillOrder(uint orderId, uint componentTypeId, uint[] memory componentIds) public 
     {
         require(parties[partyNum[msg.sender]].owner == msg.sender, "Sender does not belong to any party");
@@ -286,6 +344,12 @@ contract SupplyChain {
         }
     }
 
+    /**
+    * Function for creation of shipment
+    *
+    * @param buyerId Denotes the id of buyer party
+    * @param sellerId Denotes the id of seller party
+    */
     function createShipment(uint buyerId, uint sellerId) public 
     idCheck(shipmentsCounter,maxShipments,"Maximum number of shipments reached")
     {
@@ -296,6 +360,12 @@ contract SupplyChain {
         shipmentsCounter++;
     }
 
+    /**
+    * Function for addition of order to shipment
+    *
+    * @param orderId Denotes the id of corresponding Order
+    * @param shipmentId Denotes the id of corresponding Shipment
+    */
     function addOrderToShipment(uint orderId, uint shipmentId) public 
     idCheck(orderId, ordersCounter,"Order Id does not exist")
     idCheck(shipmentId, shipmentsCounter,"Shipment Id does not exist")
@@ -311,6 +381,11 @@ contract SupplyChain {
         shipments[shipmentId].numberOfOrders = temp;
     }
 
+    /**
+    * Function for Confirmation of order
+    *
+    * @param orderId Denotes the id of corresponding Order
+    */
     function confirmOrder(uint orderId) public 
     idCheck(orderId,ordersCounter,"Order Id does not exist")
     checkStatus(orderId,OrderStatus.PLACED)
@@ -320,6 +395,11 @@ contract SupplyChain {
         
     }
     
+    /**
+    * Function for cancellation of order
+    *
+    * @param orderId Denotes the id of corresponding Order
+    */
     function cancelOrder(uint orderId) public
     idCheck(orderId, ordersCounter,"Order Id does not exist")
     checkStatus(orderId,OrderStatus.PLACED)
@@ -328,7 +408,11 @@ contract SupplyChain {
             "Sender is not buyer or seller");
         orders[orderId].status = OrderStatus.CANCELLED;
     }
-
+    /**
+    * Function updates order status to Shipped within shipment
+    *
+    * @param shipmentId Denotes the id of corresponding shipment
+    */
     function updateShipmentStatus(uint shipmentId) public 
     idCheck(shipmentId, shipmentsCounter,"Shipment Id does not exist")
     {
@@ -346,6 +430,11 @@ contract SupplyChain {
         }
     }
 
+    /**
+    * Function completes the shipment
+    *
+    * @param shipmentId Denotes the id of corresponding shipment
+    */
     function completeShipment(uint shipmentId) public 
     idCheck(shipmentId, shipmentsCounter,"Shipment Id does not exist")
     {
@@ -365,5 +454,3 @@ contract SupplyChain {
     }
 
 }
-
-
